@@ -1,18 +1,17 @@
 package cmd
 
 import (
-	"bufio"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/meanii/teagit/utils"
 )
 
 // addProfileCmd represents the add-profile command
@@ -51,62 +50,31 @@ func validateSSHKey(keyPath string) error {
 	return nil
 }
 
-func generateSSHKey(email string) (string, string, error) {
-	tinyID := fmt.Sprintf("%d", time.Now().UnixNano())[:8]
-	privateKeyPath := filepath.Join(os.Getenv("HOME"), ".ssh", "teagit_"+tinyID+"_ed25519")
-	publicKeyPath := privateKeyPath + ".pub"
-
-	cmd := exec.Command("ssh-keygen", "-t", "ed25519", "-C", email, "-f", privateKeyPath, "-N", "")
-	if err := cmd.Run(); err != nil {
-		return "", "", fmt.Errorf("failed to generate SSH key: %v", err)
-	}
-
-	privateKey, err := os.ReadFile(privateKeyPath)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to read generated SSH private key: %v", err)
-	}
-	publicKey, err := os.ReadFile(publicKeyPath)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to read generated SSH public key: %v", err)
-	}
-
-	return string(privateKey), string(publicKey), nil
-}
-
 func sanitizeEmail(email string) string {
 	return strings.ReplaceAll(email, ".", "_")
 }
 
 func addProfile() error {
-	reader := bufio.NewReader(os.Stdin)
+	name := utils.Ask("Enter Git username: ")
 
-	fmt.Print("Enter Git username: ")
-	name, _ := reader.ReadString('\n')
-	name = strings.TrimSpace(name)
-
-	fmt.Print("Enter Git email: ")
-	email, _ := reader.ReadString('\n')
-	email = strings.TrimSpace(email)
+	email := utils.Ask("Enter Git email: ")
 	sanitizedEmail := sanitizeEmail(email)
 
-	fmt.Print("Do you have an SSH private key? (y/n): ")
-	choice, _ := reader.ReadString('\n')
-	choice = strings.TrimSpace(choice)
+	choice := ("Do you have an SSH private key? (y/n): ")
 
 	var sshKey, publicKey string
 	var err error
 
 	if choice == "y" {
-		fmt.Print("Enter SSH private key path: ")
-		sshKey, _ = reader.ReadString('\n')
-		sshKey = strings.TrimSpace(sshKey)
+		sshKey := utils.Ask("Enter SSH private key path: ")
 
 		if err := validateSSHKey(sshKey); err != nil {
 			return fmt.Errorf("invalid SSH private key: %v", err)
 		}
+
 	} else {
 		fmt.Println("Generating a new SSH key...")
-		sshKey, publicKey, err = generateSSHKey(email)
+		sshKey, publicKey, err = utils.GenerateSSHKey(email)
 		if err != nil {
 			return err
 		}
@@ -114,9 +82,9 @@ func addProfile() error {
 		fmt.Println(publicKey)
 	}
 
-	fmt.Print("Enter GPG signing key (optional, press Enter to skip): ")
-	signingKey, _ := reader.ReadString('\n')
-	signingKey = strings.TrimSpace(signingKey)
+	signingKey := utils.Ask(
+		"Enter GPG signing key (optional, press Enter to skip): ",
+	)
 
 	configDir := filepath.Join(os.Getenv("HOME"), ".teagit")
 	configFile := filepath.Join(configDir, "config.yaml")
@@ -150,4 +118,3 @@ func addProfile() error {
 
 	return nil
 }
-

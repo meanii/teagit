@@ -3,8 +3,8 @@ package cmd
 import (
 	"fmt"
 	"os"
-    "time"
 	"path/filepath"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -68,7 +68,7 @@ func initializeTeagit(force bool) error {
 	viper.AddConfigPath(configDir)
 
 	viper.SetDefault("system.init", true)
-    viper.Set("system.init_time", time.Now().Format(time.RFC3339))
+	viper.Set("system.init_time", time.Now().Format(time.RFC3339))
 
 	// Write the configuration to a file
 	fmt.Println("Writing configuration file:", configFile)
@@ -79,4 +79,3 @@ func initializeTeagit(force bool) error {
 
 	return nil
 }
-
